@@ -4,7 +4,7 @@ import cv2
 import pong_game as game
 import random
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 # Game name.
 GAME = 'Pong'
@@ -37,15 +37,17 @@ K = 2
 lr = 1e-6
 
 
-
 def discount_rewards(r):
     """ take 1D float array of rewards and compute discounted reward. 
     Args: 1D float array of rewards.
     Returns: an array with discounted rewards.
     """
-
-   
-
+    discounted_r = np.zeros(len(r))
+    for t in range(len(r)):     # Vanilla Policy Gradient
+        cur_sum = 0
+        for t_hat in range(t, len(r)):     # compute reward
+            cur_sum += np.power(GAMMA, t_hat - t) * r[t_hat]
+        discounted_r[t] = cur_sum
     return discounted_r
 
 
@@ -108,7 +110,7 @@ def createNetwork():
     return s, readout
 
 
-def compute_cost(readout,action_holder,reward_holder):
+def compute_cost(readout, action_holder, reward_holder):
     """ Compute the cost. This is the weighted sum of the probability of the taken actions
     with the associated discounted reward.
     Args:
@@ -118,7 +120,8 @@ def compute_cost(readout,action_holder,reward_holder):
     Returns:
         loss
     """
-
+    prob = tf.reduce_sum(tf.multiply(readout, action_holder), axis=1)
+    loss = tf.reduce_sum(prob * reward_holder)
     return loss
 
 
@@ -152,7 +155,7 @@ class agent():
         tvars = tf.trainable_variables()
         self.gradient_holders = []
 
-        for idx,var in enumerate(tvars):
+        for idx, var in enumerate(tvars):
             placeholder = tf.placeholder(tf.float32, name=str(idx) + '_holder')
             self.gradient_holders.append(placeholder)
 
@@ -166,7 +169,7 @@ class agent():
         self.update_batch = optimizer.apply_gradients(zip(self.gradient_holders, tvars))
 
 
-def get_action_index(readout_t,epsilon,t):
+def get_action_index(readout_t, epsilon, t):
     """ Choose an action epsilon-greedily.
     Details:
         choose an action randomly in case:
@@ -178,13 +181,18 @@ def get_action_index(readout_t,epsilon,t):
         epsilon: tempreture variable for exploration-exploitation.
         t: current number of iterations.
     Returns:
-        index: the index of the action to be taken next.
+        action_index: the index of the action to be taken next.
 
     """
-
+    temp = np.random.rand()
+    if t < OBSERVE or temp < epsilon:
+        action_index = np.random.randint(ACTIONS)
+    else:
+        action_index = np.argmax(readout_t)
     return action_index
 
-def scale_down_epsilon(epsilon,t):
+
+def scale_down_epsilon(epsilon, t):
     """ Decrease epsilon after by ((INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE )
     in case epsilon is larger than the desired final epsilon or we depassed
     the observation phase.
@@ -195,11 +203,13 @@ def scale_down_epsilon(epsilon,t):
         the updated epsilon
 
     """
-
+    # at the beginning, set high probability to explore game
+    if epsilon > FINAL_EPSILON or t > OBSERVE:
+        epsilon -= (INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE
     return epsilon
 
 
-def run_selected_action(a_t,s_t,game_state):
+def run_selected_action(a_t, s_t, game_state):
     """ Run the selected action and return the next state and reward.
     Do not forget that state is composed of the 4 previous frames.
     Hint: check the initialization for the interface to the game simulator.
@@ -208,15 +218,19 @@ def run_selected_action(a_t,s_t,game_state):
         s_t: the current state.
         game_state: game state to communicate with emulator
     Returns:
-        the next state
-        the reward
+        s_t1: the next state
+        r_t: the reward
         terminal: indicating whether the episode terminated (output of the simulator)
     """
+    x_t, r_t, terminal = game_state.frame_step(a_t)
+    x_t = cv2.cvtColor(cv2.resize(x_t, (80, 80)), cv2.COLOR_BGR2GRAY)
+    ret, x_t = cv2.threshold(x_t, 1, 255, cv2.THRESH_BINARY)
+    x_t = np.expand_dims(x_t, axis=2)
+    s_t1 = np.append(x_t, s_t[:, :, 0:3], axis=2)
+    return s_t1, r_t, terminal
 
-    return s_t1,r_t,terminal
 
-
-def trainNetwork(myAgent,sess):
+def trainNetwork(myAgent, sess):
 
     # Open up a game state to communicate with emulator.
     game_state = game.GameState()
@@ -248,7 +262,7 @@ def trainNetwork(myAgent,sess):
 
     # Initialize the grad_buffer.
     gradBuffer = sess.run(tf.trainable_variables())
-    for ix,grad in enumerate(gradBuffer):
+    for ix, grad in enumerate(gradBuffer):
         gradBuffer[ix] = grad * 0
 
 
@@ -257,6 +271,10 @@ def trainNetwork(myAgent,sess):
 
     # Initialize the iteration counter.
     t = 0
+
+    # reward for plotting learning curve
+    cur_reward = 0
+    all_reward = []
 
     # For all episodes.
     while True:
@@ -268,18 +286,27 @@ def trainNetwork(myAgent,sess):
         a_t[action_index] = 1
 
         # Scale down epsilon during the exploitation phase.
-        epsilon = scale_down_epsilon(epsilon,t)
-
+        epsilon = scale_down_epsilon(epsilon, t)
 
         for i in range(0, K):
             # Run the selected action and observe next state and reward.
-            s_t1,r_t,terminal = run_selected_action(a_t,s_t,game_state)
+            s_t1, r_t, terminal = run_selected_action(a_t, s_t, game_state)
 
             # Store the transition in the replay memory.
             ep_history.append([s_t, a_t, r_t, s_t1])
 
+            # count reward per episode
+            #if (terminal):
+            #    break
+
             if (terminal):
+                final_score = cur_reward + 1 if r_t == 1 else cur_reward
+                all_reward.append(final_score)
+                print('t = {}, score = {}'.format(t, final_score))
+                cur_reward = 0
                 break
+            else:
+                cur_reward = game_state.bar1_score
 
 
         # If the episode is over
@@ -298,23 +325,18 @@ def trainNetwork(myAgent,sess):
             feed_dict={myAgent.reward_holder:r_j, myAgent.action_holder: a_j, myAgent.state_in: s_j}
 
             grads = sess.run(myAgent.gradients, feed_dict = feed_dict)
- 
 
-
-            for idx,grad in enumerate(grads):
+            for idx, grad in enumerate(grads):
                 gradBuffer[idx] += grad
-
-
 
             feed_dict= dictionary = dict(zip(myAgent.gradient_holders, gradBuffer))
             _ = sess.run(myAgent.update_batch, feed_dict = feed_dict)
 
             # Clean the grad buffer
-            for ix,grad in enumerate(gradBuffer):
+            for ix, grad in enumerate(gradBuffer):
                 gradBuffer[ix] = grad * 0
 
             ep_history = []
-
 
         # Update the state.
         s_t = s_t1
@@ -327,14 +349,12 @@ def trainNetwork(myAgent,sess):
             saver.save(sess, 'saved_networks_policy_gradient/' + GAME + '-dqn', global_step = t)
 
         # Print info.
-        print("TIMESTEP", t, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
-
-
-
-
+        if t % 10000 == 0:
+            print("TIMESTEP", t, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
+            np.save('PG_Score', np.asarray(all_reward))
 
 def playGame():
-    """Paly the pong game"""
+    """Play the pong game"""
 
     # Start an active session.
     sess = tf.InteractiveSession()
@@ -347,7 +367,6 @@ def playGame():
 
     # Train the Network.
     s, readout = trainNetwork(myAgent, sess)
-
 
 
 def main():
