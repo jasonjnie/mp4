@@ -1,7 +1,7 @@
-
+import os
+os.environ["SDL_VIDEODRIVER"] = 'dummy'
 import numpy as np
 import pygame
-import os
 from pygame.locals import *
 from sys import exit
 import random
