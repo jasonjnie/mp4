@@ -289,7 +289,7 @@ def trainNetwork(s, readout, sess):
             if terminal:
                 final_score = cur_reward + 1 if r_t == 1 else cur_reward
                 all_reward.append(final_score)
-                #print('all reward:', all_reward)
+                print('t = {}, score = {}'.format(t, final_score))
                 cur_reward = 0
             else:
                 cur_reward = game_state.bar1_score
