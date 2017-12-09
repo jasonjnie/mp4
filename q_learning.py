@@ -255,6 +255,9 @@ def trainNetwork(s, readout, sess):
 
     # Initialize the iteration counter.
     t = 0
+
+    # reward for plotting learning curve
+    cur_reward = 0
     all_reward = []
 
     while True:
@@ -282,6 +285,14 @@ def trainNetwork(s, readout, sess):
             if len(D) > REPLAY_MEMORY:
                 D.popleft()
 
+            # count reward per episode
+            if terminal:
+                final_score = cur_reward + 1 if r_t == 1 else cur_reward
+                all_reward.append(final_score)
+                #print('all reward:', all_reward)
+                cur_reward = 0
+            else:
+                cur_reward = game_state.bar1_score
 
         # Start training once the observation phase is over.
         if (t > OBSERVE):
@@ -325,15 +336,18 @@ def trainNetwork(s, readout, sess):
             state = "explore"
         else:
             state = "train"
-        if t % 100 == 0:
+        if t % 10000 == 0:
             print("TIMESTEP", t, "/ STATE", state, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
-        '''
-        all_r_t.append(r_t)
-        if t % 100000 == 0:
-            x = np.arange(t)
-            plt.plot(x, all_r_t)
+            # save data and plot learning curve
+            np.save('Score', np.asarray(all_reward))
+            x = np.arange(len(all_reward)).astype(int) + 1
+            plt.plot(x, all_reward)
+            plt.xlabel('Episode')
+            plt.ylabel('Score')
+            plt.title('Learning Curve of Q Learning: Reward per Episode')
             plt.savefig('q_learning_curve.png')
-        '''
+
+
 
 
 def playGame():

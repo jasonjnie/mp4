@@ -145,7 +145,7 @@ class GameState:
         # Get the playground.
         image_data = pygame.surfarray.array3d(pygame.display.get_surface())
 
-        pygame.display.update()
+        #pygame.display.update()
 
         # Reset the game.
         terminal = False
