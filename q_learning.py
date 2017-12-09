@@ -340,12 +340,14 @@ def trainNetwork(s, readout, sess):
             print("TIMESTEP", t, "/ STATE", state, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
             # save data and plot learning curve
             np.save('Score', np.asarray(all_reward))
+            '''
             x = np.arange(len(all_reward)).astype(int) + 1
             plt.plot(x, all_reward)
             plt.xlabel('Episode')
             plt.ylabel('Score')
             plt.title('Learning Curve of Q Learning: Reward per Episode')
             plt.savefig('q_learning_curve.png')
+            '''
 
 
 
