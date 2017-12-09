@@ -259,6 +259,7 @@ def trainNetwork(s, readout, sess):
     # reward for plotting learning curve
     cur_reward = 0
     all_reward = []
+    prev_score_arr = np.load('Q_Score.npy')
 
     while True:
 
@@ -336,10 +337,11 @@ def trainNetwork(s, readout, sess):
             state = "explore"
         else:
             state = "train"
-        if t % 10000 == 0:
+        if t % 100 == 0:
             print("TIMESTEP", t, "/ STATE", state, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
             # save data and plot learning curve
-            np.save('Score', np.asarray(all_reward))
+            new_score_arr = np.concatenate((prev_score_arr, np.asarray(all_reward)))
+            np.save('Q_Score', new_score_arr)
             '''
             x = np.arange(len(all_reward)).astype(int) + 1
             plt.plot(x, all_reward)

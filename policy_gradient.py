@@ -275,6 +275,7 @@ def trainNetwork(myAgent, sess):
     # reward for plotting learning curve
     cur_reward = 0
     all_reward = []
+    prev_score_arr = np.load('PG_Score.npy')
 
     # For all episodes.
     while True:
@@ -351,7 +352,8 @@ def trainNetwork(myAgent, sess):
         # Print info.
         if t % 10000 == 0:
             print("TIMESTEP", t, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
-            np.save('PG_Score', np.asarray(all_reward))
+            new_score_arr = np.concatenate((prev_score_arr, np.asarray(all_reward)))
+            np.save('PG_Score', new_score_arr)
 
 def playGame():
     """Play the pong game"""
