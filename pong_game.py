@@ -10,7 +10,7 @@ import pygame.surfarray as surfarray
 position = 5, 325
 os.environ['SDL_VIDEO_WINDOW_POS'] = str(position[0]) + "," + str(position[1])
 pygame.init()
-screen = pygame.display.set_mode((640,480),0,32)
+screen = pygame.display.set_mode((640, 480), 0, 32)
 
 # Creating 2 bars, a ball and background.
 back = pygame.Surface((640,480))
