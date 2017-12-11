@@ -42,7 +42,7 @@ def discount_rewards(r):
     Args: 1D float array of rewards.
     Returns: an array with discounted rewards.
     """
-    
+    '''
     discounted_r = np.zeros(len(r))
     for t in range(len(r)):     # Vanilla Policy Gradient
         cur_sum = 0
@@ -62,7 +62,7 @@ def discount_rewards(r):
     discounted_r -= np.mean(discounted_r)
     discounted_r /= np.std(discounted_r)
     return discounted_r
-    '''
+    
     '''
     length = len(r)
     discounted_r = np.zeros(length)
