@@ -51,7 +51,7 @@ def discount_rewards(r):
         discounted_r[t] = cur_sum
     return discounted_r
     '''
-    '''
+    
     discounted_r = np.zeros(np.shape(r))
     sum_temp = 0
     for i in reversed(range(len(r))):
@@ -71,6 +71,7 @@ def discount_rewards(r):
             temp += r[j + i] * np.power(GAMMA, j)
         discounted_r[i] = temp
     return discounted_r
+    '''
 
 
 def weight_variable(shape):
@@ -144,7 +145,7 @@ def compute_cost(readout, action_holder, reward_holder):
     """
     #prob = tf.reduce_sum(tf.multiply(readout, action_holder), axis=1)
     #loss = tf.reduce_sum(prob * reward_holder)
-    '''
+    
     prob = tf.reduce_sum(tf.multiply(tf.log(readout), action_holder), axis=1)
     loss = tf.multily(reward_holder, prob)
     return -loss
@@ -152,6 +153,7 @@ def compute_cost(readout, action_holder, reward_holder):
     prob_tensor = tf.reduce_sum(tf.multiply(readout, action_holder), axis=1)
     loss = tf.reduce_sum(reward_holder * prob_tensor)
     return -loss
+    '''
 
 
 
@@ -233,9 +235,10 @@ def scale_down_epsilon(epsilon, t):
 
     """
     # at the beginning, set high probability to explore game
-    '''
+    
     if epsilon > FINAL_EPSILON or t > OBSERVE:
         epsilon -= (INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE
+    return epsilon
     '''
     if t < OBSERVE:
         epsilon = INITIAL_EPSILON
@@ -244,6 +247,7 @@ def scale_down_epsilon(epsilon, t):
     if t>= OBSERVE and t <= OBSERVE + EXPLORE:
         epsilon = epsilon - ((INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE )
     return epsilon
+    '''
 
 
 def run_selected_action(a_t, s_t, game_state):
