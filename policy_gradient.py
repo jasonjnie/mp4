@@ -147,7 +147,7 @@ def compute_cost(readout, action_holder, reward_holder):
     #loss = tf.reduce_sum(prob * reward_holder)
     
     prob = tf.reduce_sum(tf.multiply(tf.log(readout), action_holder), axis=1)
-    loss = tf.multily(reward_holder, prob)
+    loss = tf.multiply(reward_holder, prob)
     return -loss
     '''
     prob_tensor = tf.reduce_sum(tf.multiply(readout, action_holder), axis=1)
