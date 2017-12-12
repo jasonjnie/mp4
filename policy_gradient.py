@@ -145,16 +145,16 @@ def compute_cost(readout, action_holder, reward_holder):
     Returns:
         loss
     """
-    '''
+    
     prob = tf.reduce_sum(tf.multiply(readout, action_holder), axis=1)
-    loss = tf.reduce_sum(prob * reward_holder)
+    loss = tf.reduce_mean(prob * reward_holder)
     return loss
     
     '''
     prob = tf.reduce_sum(tf.multiply(tf.log(readout), action_holder), axis=1)
     loss = tf.multiply(reward_holder, prob)
     return -loss
-    '''
+    
     prob_tensor = tf.reduce_sum(tf.multiply(readout, action_holder), axis=1)
     loss = tf.reduce_sum(reward_holder * prob_tensor)
     return -loss
