@@ -42,6 +42,7 @@ def discount_rewards(r):
     Args: 1D float array of rewards.
     Returns: an array with discounted rewards.
     """
+    '''
     discounted_r = np.zeros(len(r))
     for t in range(len(r)):     # Vanilla Policy Gradient
         cur_sum = 0
@@ -49,6 +50,30 @@ def discount_rewards(r):
             cur_sum += np.power(GAMMA, t_hat - t) * r[t_hat]
         discounted_r[t] = cur_sum
     return discounted_r
+    '''
+    
+    discounted_r = np.zeros(np.shape(r))
+    sum_temp = 0
+    for i in reversed(range(len(r))):
+        if r[i] != 0:
+            sum_temp = 0
+        sum_temp = sum_temp * GAMMA + r[i]
+        discounted_r[i] = sum_temp
+    discounted_r -= np.mean(discounted_r)
+    discounted_r /= np.std(discounted_r)
+    return discounted_r
+    
+    
+    '''
+    length = len(r)
+    discounted_r = np.zeros(length)
+    for i in range(length):
+        temp = 0.0
+        for j in range(length - i):
+            temp += r[j + i] * np.power(GAMMA, j)
+        discounted_r[i] = temp
+    return discounted_r
+    '''
 
 
 def weight_variable(shape):
@@ -120,9 +145,20 @@ def compute_cost(readout, action_holder, reward_holder):
     Returns:
         loss
     """
+    
     prob = tf.reduce_sum(tf.multiply(readout, action_holder), axis=1)
     loss = tf.reduce_sum(prob * reward_holder)
-    return loss
+    return -loss
+    
+    '''
+    prob = tf.reduce_sum(tf.multiply(tf.log(readout), action_holder), axis=1)
+    loss = tf.multiply(reward_holder, prob)
+    return -loss
+    
+    prob_tensor = tf.reduce_sum(tf.multiply(readout, action_holder), axis=1)
+    loss = tf.reduce_sum(reward_holder * prob_tensor)
+    return -loss
+    '''
 
 
 
@@ -182,6 +218,7 @@ def get_action_index(readout_t, epsilon, t):
         t: current number of iterations.
     Returns:
         action_index: the index of the action to be taken next.
+
     """
     temp = np.random.rand()
     if t < OBSERVE or temp < epsilon:
@@ -200,11 +237,22 @@ def scale_down_epsilon(epsilon, t):
         t: current number of iterations.
     Returns:
         the updated epsilon
+
     """
     # at the beginning, set high probability to explore game
+    
     if epsilon > FINAL_EPSILON or t > OBSERVE:
         epsilon -= (INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE
     return epsilon
+    '''
+    if t < OBSERVE:
+        epsilon = INITIAL_EPSILON
+    if t > OBSERVE + EXPLORE:
+        epsilon = FINAL_EPSILON
+    if t>= OBSERVE and t <= OBSERVE + EXPLORE:
+        epsilon = epsilon - ((INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE )
+    return epsilon
+    '''
 
 
 def run_selected_action(a_t, s_t, game_state):
@@ -375,4 +423,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
