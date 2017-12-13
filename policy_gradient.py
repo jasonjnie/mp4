@@ -13,24 +13,25 @@ GAME = 'Pong'
 ACTIONS = 3
 
 # Decay rate of past observations.
-GAMMA = 0.99 
+GAMMA = 0.99
 
 # Timesteps to observe before training.
-OBSERVE = 5000. 
+OBSERVE = 5000.
 
 # Frames over which to anneal epsilon.
-EXPLORE = 500000. 
+EXPLORE = 500000.
 
 # Final value of epsilon.
-FINAL_EPSILON = 0.05 
+FINAL_EPSILON = 0.05
 
 # Starting value of epsilon.
-INITIAL_EPSILON = 1.0 
+INITIAL_EPSILON = 1.0
 
 # Size of minibatch.
-BATCH = 32 
+BATCH = 32
 
-# Only select an action every Kth frame, repeat the same action for other frames.
+# Only select an action every Kth frame, repeat the same action for other
+# frames.
 K = 2
 
 # Learning rate.
@@ -40,56 +41,45 @@ lr = 1e-6
 def discount_rewards(r):
     """ take 1D float array of rewards and compute discounted reward. 
     Args: 1D float array of rewards.
-    Returns: an array with discounted rewards.
+    Returns: an array with discounted rewards. 
     """
-    '''
-    discounted_r = np.zeros(len(r))
-    for t in range(len(r)):     # Vanilla Policy Gradient
-        cur_sum = 0
-        for t_hat in range(t, len(r)):     # compute reward
-            cur_sum += np.power(GAMMA, t_hat - t) * r[t_hat]
-        discounted_r[t] = cur_sum
-    return discounted_r
-    '''
-    '''
-    discounted_r = np.zeros(np.shape(r))
-    sum_temp = 0
-    for i in reversed(range(len(r))):
-        if r[i] != 0:
-            sum_temp = 0
-        sum_temp = sum_temp * GAMMA + r[i]
-        discounted_r[i] = sum_temp
-    discounted_r -= np.mean(discounted_r)
-    discounted_r /= np.std(discounted_r)
-    return discounted_r
-    '''
-    length = len(r)
-    discounted_r = np.zeros(length)
-    for i in range(length):
-        temp = 0.0
-        for j in range(length - i):
-            temp += r[j + i] * np.power(GAMMA, j)
-        discounted_r[i] = temp
+
+    discounted_r = np.array([0.0 for i in range(len(r))])
+    running_add = 0
+    for t in reversed(range(0, len(r))):
+        if r[t] != 0:
+            running_add = 0
+        running_add = running_add * GAMMA + r[t]
+        discounted_r[t] = running_add
+
+    # ?
+    # discounted_r -= np.mean(discounted_r)
+    # discounted_r /= np.std(discounted_r)
+
     return discounted_r
 
 
 def weight_variable(shape):
     """ Initializa the weight variable."""
-    initial = tf.truncated_normal(shape, stddev = 0.01)
+    initial = tf.truncated_normal(shape, stddev=0.01)
     return tf.Variable(initial)
+
 
 def bias_variable(shape):
     """ Initializa the bias variable."""
-    initial = tf.constant(0.01, shape = shape)
+    initial = tf.constant(0.01, shape=shape)
     return tf.Variable(initial)
+
 
 def conv2d(x, W, stride):
     """ Define a convolutional layer."""
-    return tf.nn.conv2d(x, W, strides = [1, stride, stride, 1], padding = "SAME")
+    return tf.nn.conv2d(x, W, strides=[1, stride, stride, 1], padding="SAME")
+
 
 def max_pool_2x2(x):
     """ Define a maxpooling layer."""
-    return tf.nn.max_pool(x, ksize = [1, 2, 2, 1], strides = [1, 2, 2, 1], padding = "SAME")
+    return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
+
 
 def createNetwork():
     """ Create a convolutional network for estimating the Q value.
@@ -134,7 +124,7 @@ def createNetwork():
 
 def compute_cost(readout, action_holder, reward_holder):
     """ Compute the cost. This is the weighted sum of the probability of the taken actions
-    with the associated discounted reward.
+    with the associated discounted reward. 
     Args:
         readout: the prob distribution over actions
         action_holder: the taken actions
@@ -142,17 +132,13 @@ def compute_cost(readout, action_holder, reward_holder):
     Returns:
         loss
     """
-    #prob = tf.reduce_sum(tf.multiply(readout, action_holder), axis=1)
-    #loss = tf.reduce_sum(prob * reward_holder)
-    '''
-    prob = tf.reduce_sum(tf.multiply(tf.log(readout), action_holder), axis=1)
-    loss = tf.multily(reward_holder, prob)
-    return -loss
-    '''
-    prob_tensor = tf.reduce_sum(tf.multiply(readout, action_holder), axis=1)
-    loss = tf.reduce_sum(reward_holder * prob_tensor)
-    return -loss
 
+    # loss = - tf.reduce_sum(
+    #             tf.reduce_sum(action_holder*tf.log(readout)
+    #                           +(1-action_holder)*(tf.log(1 - readout)), 1)
+    #             *reward_holder)
+    loss = - tf.reduce_sum(tf.reduce_sum(readout * action_holder, axis=1) * reward_holder)
+    return loss
 
 
 class agent():
@@ -175,10 +161,10 @@ class agent():
         self.action_holder = tf.placeholder(shape=[None, 3], dtype=tf.int32)
 
         # Compute the Loss.
-        action_holder = tf.cast(self.action_holder,dtype=tf.float32)
+        action_holder = tf.cast(self.action_holder, dtype=tf.float32)
 
         # compute the loss
-        self.loss = compute_cost(readout,action_holder,self.reward_holder)
+        self.loss = compute_cost(readout, action_holder, self.reward_holder)
 
         # Prepare a placeholder for the gradients.
         tvars = tf.trainable_variables()
@@ -192,10 +178,11 @@ class agent():
         self.gradients = tf.gradients(self.loss, tvars)
 
         # Optimizer.
-        optimizer = tf.train.AdamOptimizer(learning_rate = lr)
+        optimizer = tf.train.AdamOptimizer(learning_rate=lr)
 
         # Perform one update step.
-        self.update_batch = optimizer.apply_gradients(zip(self.gradient_holders, tvars))
+        self.update_batch = optimizer.apply_gradients(
+            zip(self.gradient_holders, tvars))
 
 
 def get_action_index(readout_t, epsilon, t):
@@ -203,20 +190,22 @@ def get_action_index(readout_t, epsilon, t):
     Details:
         choose an action randomly in case:
         (1) of the observation phase (t<OBSERVE)
-        (2) it is dictated by the epsilon-greedy strategy
+        (2) it is dictated by the epsilon-greedy strategy 
         otherwise, choose the action with the highest Q-value
     Args:
         readout_t: a vector with the Q-value associated with every action.
         epsilon: tempreture variable for exploration-exploitation.
         t: current number of iterations.
     Returns:
-        action_index: the index of the action to be taken next.
+        index: the index of the action to be taken next.
+
     """
-    temp = np.random.rand()
-    if t < OBSERVE or temp < epsilon:
+
+    if t < OBSERVE or np.random.random() < epsilon:
         action_index = np.random.randint(ACTIONS)
     else:
         action_index = np.argmax(readout_t)
+
     return action_index
 
 
@@ -229,18 +218,12 @@ def scale_down_epsilon(epsilon, t):
         t: current number of iterations.
     Returns:
         the updated epsilon
+
     """
-    # at the beginning, set high probability to explore game
-    '''
-    if epsilon > FINAL_EPSILON or t > OBSERVE:
+
+    if t > OBSERVE and epsilon > FINAL_EPSILON:
         epsilon -= (INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE
-    '''
-    if t < OBSERVE:
-        epsilon = INITIAL_EPSILON
-    if t > OBSERVE + EXPLORE:
-        epsilon = FINAL_EPSILON
-    if t>= OBSERVE and t <= OBSERVE + EXPLORE:
-        epsilon = epsilon - ((INITIAL_EPSILON - FINAL_EPSILON) / EXPLORE )
+
     return epsilon
 
 
@@ -253,15 +236,17 @@ def run_selected_action(a_t, s_t, game_state):
         s_t: the current state.
         game_state: game state to communicate with emulator
     Returns:
-        s_t1: the next state
-        r_t: the reward
+        the next state
+        the reward  
         terminal: indicating whether the episode terminated (output of the simulator)
     """
+
     x_t, r_t, terminal = game_state.frame_step(a_t)
+
     x_t = cv2.cvtColor(cv2.resize(x_t, (80, 80)), cv2.COLOR_BGR2GRAY)
-    ret, x_t = cv2.threshold(x_t, 1, 255, cv2.THRESH_BINARY)
-    x_t = np.expand_dims(x_t, axis=2)
-    s_t1 = np.append(x_t, s_t[:, :, 0:3], axis=2)
+    _, x_t = cv2.threshold(x_t,1,255,cv2.THRESH_BINARY)
+    s_t1 = np.concatenate((s_t[:,:,1:], np.expand_dims(x_t, axis=2)), axis=2)
+
     return s_t1, r_t, terminal
 
 
@@ -276,7 +261,7 @@ def trainNetwork(myAgent, sess):
     x_t, r_0, terminal = game_state.frame_step(do_nothing)
     x_t = cv2.cvtColor(cv2.resize(x_t, (80, 80)), cv2.COLOR_BGR2GRAY)
     ret, x_t = cv2.threshold(x_t, 1, 255, cv2.THRESH_BINARY)
-    s_t = np.stack((x_t, x_t, x_t, x_t), axis = 2)
+    s_t = np.stack((x_t, x_t, x_t, x_t), axis=2)
 
     # Initialize the episose history.
     ep_history = []
@@ -288,7 +273,8 @@ def trainNetwork(myAgent, sess):
     sess.run(tf.initialize_all_variables())
 
     # Restore the checkpoints.
-    checkpoint = tf.train.get_checkpoint_state("saved_networks_policy_gradient")
+    checkpoint = tf.train.get_checkpoint_state(
+        "saved_networks_policy_gradient")
     if checkpoint and checkpoint.model_checkpoint_path:
         saver.restore(sess, checkpoint.model_checkpoint_path)
         print("Successfully loaded:", checkpoint.model_checkpoint_path)
@@ -299,7 +285,6 @@ def trainNetwork(myAgent, sess):
     gradBuffer = sess.run(tf.trainable_variables())
     for ix, grad in enumerate(gradBuffer):
         gradBuffer[ix] = grad * 0
-
 
     # Initialize the epsilon value for the exploration phase.
     epsilon = INITIAL_EPSILON
@@ -316,8 +301,9 @@ def trainNetwork(myAgent, sess):
     while True:
 
         # Choose an action epsilon-greedily.
-        readout_t = myAgent.readout.eval(feed_dict = {myAgent.state_in : [s_t]})[0]
-        action_index = get_action_index(readout_t,epsilon,t)
+        readout_t = myAgent.readout.eval(
+            feed_dict={myAgent.state_in: [s_t]})[0]
+        action_index = get_action_index(readout_t, epsilon, t)
         a_t = np.zeros([ACTIONS])
         a_t[action_index] = 1
 
@@ -331,10 +317,6 @@ def trainNetwork(myAgent, sess):
             # Store the transition in the replay memory.
             ep_history.append([s_t, a_t, r_t, s_t1])
 
-            # count reward per episode
-            #if (terminal):
-            #    break
-
             if (terminal):
                 final_score = cur_reward + 1 if r_t == 1 else cur_reward
                 all_reward.append(final_score)
@@ -343,7 +325,6 @@ def trainNetwork(myAgent, sess):
                 break
             else:
                 cur_reward = game_state.bar1_score
-
 
         # If the episode is over
         if (terminal):
@@ -358,15 +339,17 @@ def trainNetwork(myAgent, sess):
 
             s_j = np.reshape(np.vstack(s_j), [-1, 80, 80, 4])
 
-            feed_dict={myAgent.reward_holder:r_j, myAgent.action_holder: a_j, myAgent.state_in: s_j}
+            feed_dict = {myAgent.reward_holder: r_j,
+                         myAgent.action_holder: a_j,
+                         myAgent.state_in: s_j}
 
-            grads = sess.run(myAgent.gradients, feed_dict = feed_dict)
+            grads = sess.run(myAgent.gradients, feed_dict=feed_dict)
 
             for idx, grad in enumerate(grads):
                 gradBuffer[idx] += grad
 
-            feed_dict= dictionary = dict(zip(myAgent.gradient_holders, gradBuffer))
-            _ = sess.run(myAgent.update_batch, feed_dict = feed_dict)
+            feed_dict = dictionary = dict(zip(myAgent.gradient_holders, gradBuffer))
+            _ = sess.run(myAgent.update_batch, feed_dict=feed_dict)
 
             # Clean the grad buffer
             for ix, grad in enumerate(gradBuffer):
@@ -382,16 +365,18 @@ def trainNetwork(myAgent, sess):
 
         # Save a checkpoint every 10000 iterations.
         if t % 10000 == 0:
-            saver.save(sess, 'saved_networks_policy_gradient/' + GAME + '-dqn', global_step = t)
+            saver.save(sess, 'saved_networks_policy_gradient/' +
+                       GAME + '-dqn', global_step=t)
 
         # Print info.
-        if t % 10000 == 0:
-            print("TIMESTEP", t, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
-            new_score_arr = np.concatenate((prev_score_arr, np.asarray(all_reward)))
+        print("TIMESTEP", t, "/ EPSILON", epsilon, "/ ACTION",
+              action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
+        new_score_arr = np.concatenate((prev_score_arr, np.asarray(all_reward)))
             np.save('PG_Score', new_score_arr)
 
+
 def playGame():
-    """Play the pong game"""
+    """Paly the pong game"""
 
     # Start an active session.
     sess = tf.InteractiveSession()
