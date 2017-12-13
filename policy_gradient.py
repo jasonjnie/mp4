@@ -369,9 +369,9 @@ def trainNetwork(myAgent, sess):
                        GAME + '-dqn', global_step=t)
 
         # Print info.
-        print("TIMESTEP", t, "/ EPSILON", epsilon, "/ ACTION",
-              action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
-        new_score_arr = np.concatenate((prev_score_arr, np.asarray(all_reward)))
+        if t % 10000 == 0:
+            print("TIMESTEP", t, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
+            new_score_arr = np.concatenate((prev_score_arr, np.asarray(all_reward)))
             np.save('PG_Score', new_score_arr)
 
 
